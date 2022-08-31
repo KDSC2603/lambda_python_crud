@@ -5,6 +5,7 @@ from pprint import pprint
 import boto3
 from botocore.exceptions import ClientError
 import logging
+from decimal import *
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -12,6 +13,11 @@ logger.setLevel(logging.INFO)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+def decimal_convert(obj):
+    if isinstance(obj, Decimal):
+        return str(obj)
+
 #Agregar
 def add_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero):
     logger.info("metodo para agregar alumno")
@@ -31,7 +37,9 @@ def add_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fec
                 'fecha_nacimiento': fecha_nacimiento,
                 'genero':  genero,
             })
-        return response
+
+        rpt="Alumno insertado exitosamente"
+        return rpt
     except ClientError as err:
         
 
@@ -51,7 +59,7 @@ def update_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, 
         table = dynamodb.Table('alumno')
         
         response = table.update_item(
-          Key={
+        Key={
             'id_alumno': id_alumno,
             'nombre': nombre
         },
@@ -67,18 +75,18 @@ def update_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, 
             },
             ReturnValues="UPDATED_NEW"
         )
-        return response
+        rpt="Alumno actualizado exitosamente"
+        return rpt
     except ClientError as err:
         logger.exception(err)
         
-  #Eliminar
+#Eliminar
 def delete_alumnos(id_alumno, nombre):
     logger.info("metodo para eliminar alumno")
     try:
         response=None
         mensaje=None
         dynamodb = boto3.resource('dynamodb')
-      
         table = dynamodb.Table('alumno')
         
         item=get_alumnos(id_alumno, nombre)
@@ -96,9 +104,9 @@ def delete_alumnos(id_alumno, nombre):
             'id_alumno': id_alumno,
             'nombre': nombre
         })
+        
         response = {"message":mensaje}
         logger.info(response)
-      
         return response
     except ClientError as err:
         logger.exception(err)
@@ -107,6 +115,10 @@ def delete_alumnos(id_alumno, nombre):
 #Buscar
 def get_alumnos(id_alumno, nombre):
     logger.info("metodo para buscar alumno")
+
+    id_alumno=int(id_alumno)
+    logger.info("type id_alumno: {} nombre: {}".format(type(id_alumno),type(nombre)))
+
     try:
         response=None
         msj=None
@@ -115,8 +127,9 @@ def get_alumnos(id_alumno, nombre):
         table = dynamodb.Table('alumno')
         
         
-        response = table.get_item(Key={'id_alumno': id_alumno, 'nombre':nombre
-        })
+        response = table.get_item(Key={'id_alumno': id_alumno, 'nombre':nombre})
+
+        
         logger.info("response: " + str(response))
     
         item = response.get('Item', None)
@@ -126,35 +139,61 @@ def get_alumnos(id_alumno, nombre):
         logger.exception(err)
 
 def lambda_handler(event, context):
+    response=None
+    msj=None
+    logger.info("evento: {}".format(json.dumps(event)))
     
-    logger.info("evento: "+json.dumps(event))
-    
-    operacion=event.get("operacion",None)
-    data=event.get("data",None)
+    httpMethod=event.get("httpMethod",None)
+    logger.info("httpMethod: {}".format(httpMethod))
 
-    id_alumno = data.get("id_alumno", None)
-    nombre = data.get("nombre",None)
-    apellido = data.get("apellido",None)
-    curso = data.get("curso",None)
-    direccion = data.get("direccion",None)
-    edad = data.get("edad",None)
-    estado = data.get("estado",None)
-    fecha_nacimiento = data.get("fecha_nacimiento",None)
-    genero = data.get("genero",None)
+
+    if httpMethod =="POST":
+        body = event.get("body",None)
+        #TODO revisar cuando body es none
+        json_body=json.loads(body)
+
+
+        id_alumno = json_body.get("id_alumno", None)
+        nombre = json_body.get("nombre",None)
+        apellido = json_body.get("apellido",None)
+        curso = json_body.get("curso",None)
+        direccion = json_body.get("direccion",None)
+        edad = json_body.get("edad",None)
+        estado = json_body.get("estado",None)
+        fecha_nacimiento = json_body .get("fecha_nacimiento",None)
+        genero = json_body.get("genero",None)
+
+        msj=add_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero)
+    elif httpMethod =="GET":
+        pathParameters=event.get("pathParameters",None)
+        nombre=pathParameters.get("nombre",None)
+        id=pathParameters.get("id",None)
+        logger.info("pathParameters: {}".format(pathParameters))
+        logger.info("nombre: {} id: {}".format(nombre,id))
+        msj=get_alumnos(id,nombre)
     
 
-    if operacion=="crear":
-        add_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero)
     
-    elif operacion=="actualizar":
-        update_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero)
+    # if operacion=="crear":
+    #     msj=add_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero)
     
-    elif operacion=="eliminar":
-        delete_alumnos(id_alumno, nombre)
+    # elif operacion=="actualizar":
+    #     msj=update_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero)
+    
+    # elif operacion=="eliminar":
+    #     msj=delete_alumnos(id_alumno, nombre)
 
-    elif operacion=="buscar":
-        get_alumnos(id_alumno,nombre)
+    # elif operacion=="buscar":
+    #     msj=get_alumnos(id_alumno,nombre)
     
-    else:
-        logger.info("operacion invalida")
+    # else:
+    #     logger.info("operacion invalida")
+    #     msj="operacion invalida"
+
+
+    response = {
+            "statusCode": 200,
+            "body": json.dumps(msj,default=decimal_convert)
+        }
+    return response
     
