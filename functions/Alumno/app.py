@@ -83,9 +83,14 @@ def update_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, 
 #Eliminar
 def delete_alumnos(id_alumno, nombre):
     logger.info("metodo para eliminar alumno")
+
+    id_alumno=int(id_alumno)
+    logger.info("type id_alumno: {} nombre: {}".format(type(id_alumno),type(nombre)))
+
     try:
         response=None
         mensaje=None
+
         dynamodb = boto3.resource('dynamodb')
         table = dynamodb.Table('alumno')
         
@@ -152,7 +157,6 @@ def lambda_handler(event, context):
         #TODO revisar cuando body es none
         json_body=json.loads(body)
 
-
         id_alumno = json_body.get("id_alumno", None)
         nombre = json_body.get("nombre",None)
         apellido = json_body.get("apellido",None)
@@ -171,6 +175,30 @@ def lambda_handler(event, context):
         logger.info("pathParameters: {}".format(pathParameters))
         logger.info("nombre: {} id: {}".format(nombre,id))
         msj=get_alumnos(id,nombre)
+
+    elif httpMethod =="DELETE":
+        pathParameters=event.get("pathParameters",None)
+        nombre=pathParameters.get("nombre",None)
+        id=pathParameters.get("id",None)
+        logger.info("pathParameters: {}".format(pathParameters))
+        logger.info("nombre: {} id: {}".format(nombre,id))
+        msj=delete_alumnos(id, nombre)  
+    elif httpMethod =="PUT":
+        body = event.get("body",None)
+        #TODO revisar cuando body es none
+        json_body=json.loads(body)
+
+        id_alumno = json_body.get("id_alumno", None)
+        nombre = json_body.get("nombre",None)
+        apellido = json_body.get("apellido",None)
+        curso = json_body.get("curso",None)
+        direccion = json_body.get("direccion",None)
+        edad = json_body.get("edad",None)
+        estado = json_body.get("estado",None)
+        fecha_nacimiento = json_body .get("fecha_nacimiento",None)
+        genero = json_body.get("genero",None)
+        msj=update_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero)
+  
     
 
     
