@@ -198,9 +198,6 @@ def lambda_handler(event, context):
         fecha_nacimiento = json_body .get("fecha_nacimiento",None)
         genero = json_body.get("genero",None)
         msj=update_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero)
-  
-    
-
     
     # if operacion=="crear":
     #     msj=add_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero)
@@ -221,6 +218,11 @@ def lambda_handler(event, context):
 
     response = {
             "statusCode": 200,
+            "headers": {
+            "Access-Control-Allow-Headers": '*',
+            "Access-Control-Allow-Origin": '*',
+            "Access-Control-Allow-Methods": '*'
+        },
             "body": json.dumps(msj,default=decimal_convert)
         }
     return response
