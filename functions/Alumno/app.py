@@ -14,10 +14,16 @@ logger.setLevel(logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+
+
+
+
+
 def decimal_convert(obj):
     if isinstance(obj, Decimal):
         return str(obj)
-
+        
+    
 #Agregar
 def add_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero):
     logger.info("metodo para agregar alumno")
@@ -83,14 +89,9 @@ def update_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, 
 #Eliminar
 def delete_alumnos(id_alumno, nombre):
     logger.info("metodo para eliminar alumno")
-
-    id_alumno=int(id_alumno)
-    logger.info("type id_alumno: {} nombre: {}".format(type(id_alumno),type(nombre)))
-
     try:
         response=None
         mensaje=None
-
         dynamodb = boto3.resource('dynamodb')
         table = dynamodb.Table('alumno')
         
@@ -142,6 +143,28 @@ def get_alumnos(id_alumno, nombre):
         return item
     except ClientError as err:
         logger.exception(err)
+        
+    #Listado
+def  list_alumnos():
+    data=[]
+    logger.info("metodo de listar alumno")
+    
+
+    try:
+    
+        
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table('alumno')
+        response= table.scan()
+        data = response['Items']
+
+            
+        while 'LastEvaluatedKey' in response:
+            response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+        data.extend(response['Items'])
+    except ClientError as err:
+        logger.exception(err)
+    return data   
 
 def lambda_handler(event, context):
     response=None
@@ -157,6 +180,7 @@ def lambda_handler(event, context):
         #TODO revisar cuando body es none
         json_body=json.loads(body)
 
+
         id_alumno = json_body.get("id_alumno", None)
         nombre = json_body.get("nombre",None)
         apellido = json_body.get("apellido",None)
@@ -170,34 +194,27 @@ def lambda_handler(event, context):
         msj=add_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero)
     elif httpMethod =="GET":
         pathParameters=event.get("pathParameters",None)
-        nombre=pathParameters.get("nombre",None)
-        id=pathParameters.get("id",None)
-        logger.info("pathParameters: {}".format(pathParameters))
-        logger.info("nombre: {} id: {}".format(nombre,id))
-        msj=get_alumnos(id,nombre)
+        
 
+        if pathParameters is None:
+            msj=list_alumnos()
+        else:
+            nombre=pathParameters.get("nombre",None)
+            id=pathParameters.get("id",None)
+            logger.info("pathParameters: {}".format(pathParameters))
+            logger.info("nombre: {} id: {}".format(nombre,id))
+            msj=get_alumnos(id,nombre)
+        
     elif httpMethod =="DELETE":
         pathParameters=event.get("pathParameters",None)
         nombre=pathParameters.get("nombre",None)
         id=pathParameters.get("id",None)
         logger.info("pathParameters: {}".format(pathParameters))
         logger.info("nombre: {} id: {}".format(nombre,id))
-        msj=delete_alumnos(id, nombre)  
-    elif httpMethod =="PUT":
-        body = event.get("body",None)
-        #TODO revisar cuando body es none
-        json_body=json.loads(body)
+        msj=delete_alumnos(id, nombre)     
+    
+    
 
-        id_alumno = json_body.get("id_alumno", None)
-        nombre = json_body.get("nombre",None)
-        apellido = json_body.get("apellido",None)
-        curso = json_body.get("curso",None)
-        direccion = json_body.get("direccion",None)
-        edad = json_body.get("edad",None)
-        estado = json_body.get("estado",None)
-        fecha_nacimiento = json_body .get("fecha_nacimiento",None)
-        genero = json_body.get("genero",None)
-        msj=update_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero)
     
     # if operacion=="crear":
     #     msj=add_alumnos(id_alumno, nombre, apellido, curso, direccion, edad, estado, fecha_nacimiento, genero)
